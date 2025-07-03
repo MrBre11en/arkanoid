@@ -3,10 +3,32 @@
 
 #include "framework.h"
 #include "arkanoid.h"
+#include <algorithm>
+#include "windows.h"
 
 #define MAX_LOADSTRING 100
 
+
 //////////////////////////////////////////////////////////////////////////////
+
+struct vec2 {
+    float x, y;
+
+    vec2(float X = 0.0f, float Y = 0.0f)
+        : x(X), y(Y)
+    {}
+};
+
+struct vec2int {
+    int x, y;
+
+    vec2int(int X = 0.0f, int Y = 0.0f)
+        : x(X), y(Y)
+    {}
+};
+
+//////////////////////////////////////////////////////////////////////////////
+
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
@@ -19,15 +41,10 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 
 POINT MousePos;
+bool started;
 
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
-namespace ginfo {
-    const int platformWidth = 200;
-    const int platformHeight = 20;
-    const int platformYPos = screenHeight - platformHeight / 2 - 25;
-}
 
 struct {
     HWND hWnd;//хэндл окна
@@ -35,42 +52,73 @@ struct {
     int width, height;//сюда сохраним размеры окна которое создаст программа
 } window;
 
+struct {
+    int radius = 15;
+
+    vec2 pos;
+    vec2 dir;
+} ball;
+
+struct {
+    const int width = 200;
+    const int height = 20;
+
+    int xpos;
+} platform;
+
+namespace ginfo {
+    const int platformYPos = screenHeight - platform.height / 2 - 25;
+}
+
 //////////////////////////////////////////////////////////////////////////////
+
 
 void GetMousePosition()
 {
     GetCursorPos(&MousePos);
 }
 
-void ShowBitmap(HDC hDC, int x, int y, int x1, int y1, bool alpha = false)
+
+void Update()
 {
-    
+    platform.xpos = min(max(MousePos.x, platform.width / 2), window.width - platform.width / 2);
+
+    if (started)
+    {
+
+    }
+    else
+    {
+        ball.pos = vec2(platform.xpos, ginfo::platformYPos - platform.height / 2 - ball.radius);
+    }
 }
 
-void DrawWindow()
-{
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(window.hWnd, &ps);
 
+void DrawWindow(HDC hdc)
+{
     RECT rect;
     HBRUSH hBrush;
+    HPEN hPen;
 
-    GetClientRect(window.hWnd, &rect);
+    rect = { 0, 0, window.width, window.height };
     hBrush = CreateSolidBrush(RGB(50, 50, 50));
     FillRect(hdc, &rect, hBrush);
 
-    rect = { MousePos.x - ginfo::platformWidth / 2, ginfo::platformYPos + ginfo::platformHeight / 2, MousePos.x + ginfo::platformWidth / 2, ginfo::platformYPos - ginfo::platformHeight / 2 };
+    rect = { platform.xpos - platform.width / 2, ginfo::platformYPos + platform.height / 2, platform.xpos + platform.width / 2, ginfo::platformYPos - platform.height / 2 };
     hBrush = CreateSolidBrush(RGB(255, 0, 0));
     FillRect(hdc, &rect, hBrush);
 
+    hBrush = CreateSolidBrush(RGB(255, 0, 0));
+    hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 255));
+    Ellipse(hdc, ball.pos.x - ball.radius, ball.pos.y - ball.radius, ball.pos.x + ball.radius, ball.pos.y + ball.radius);
+
     DeleteObject(hBrush);
-
-    BitBlt(window.device_context, 0, 0, window.width, window.height, window.context, 0, 0, SRCCOPY);
-
-    EndPaint(window.hWnd, &ps);
+    DeleteObject(hPen);
 }
 
+
 //////////////////////////////////////////////////////////////////////////////
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -101,17 +149,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Цикл основного сообщения:
     while (!GetAsyncKeyState(VK_ESCAPE))
     {
-        GetMousePosition();
-        ShowBitmap(window.context, 0, 0, window.width, window.height);
-        DrawWindow();
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(window.hWnd, &ps);
 
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        GetMousePosition();
+        Update();
+        DrawWindow(window.context);
+        BitBlt(window.device_context, 0, 0, window.width, window.height, window.context, 0, 0, SRCCOPY);
+
+        EndPaint(window.hWnd, &ps);
+
+        if (!TranslateAccelerator(window.hWnd, hAccelTable, &msg))
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        Sleep(16);
+        Sleep(2);
     }
 
     return (int) msg.wParam;
@@ -145,6 +199,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
+
 //
 //   ФУНКЦИЯ: InitInstance(HINSTANCE, int)
 //
@@ -167,6 +222,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   started = false;
+
    window.hWnd = hWnd;
    window.device_context = GetDC(window.hWnd); //из хэндла окна достаем хэндл контекста устройства для рисования
    RECT r;
@@ -182,6 +239,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    return TRUE;
 }
+
 
 //
 //  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
@@ -213,6 +271,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         {
+        
         }
         break;
     case WM_DESTROY:
