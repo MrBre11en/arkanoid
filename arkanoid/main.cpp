@@ -6,7 +6,9 @@
 #include <algorithm>
 #include "windows.h"
 
-#define MAX_LOADSTRING 100
+#define MAX_LOADSTRING 256
+
+const float PI = 3.1415926535897932;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -132,6 +134,10 @@ bool started;
 const int screenWidth = GetSystemMetrics(SM_CXSCREEN);
 const int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
+struct brick {
+    vec2 pos;
+};
+
 struct {
     HWND hWnd;//хэндл окна
     HDC device_context, context;// два контекста устройства (для буферизации)
@@ -142,7 +148,7 @@ struct {
     int radius = 15;
 
     vec2 pos;
-    vec2 dir = vec2(0.0f, -1.0f);
+    vec2 dir = vec2(0.0f, 1.0f);
     float speed = 10;
 } ball;
 
@@ -155,7 +161,11 @@ struct {
 
 namespace ginfo {
     const int platformYPos = screenHeight - platform.height / 2 - 25;
+
+    const int brickWidth = 50;
+    const int brickHeight = 25;
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -170,7 +180,7 @@ void GetMousePosition()
 }
 
 
-void ChangeDirection(vec2 normal)
+void ReflectDirection(vec2 normal)
 {
     vec2 reflected = ball.dir - (ball.dir * normal) * 2 * normal;
     ball.dir = reflected;
@@ -179,7 +189,26 @@ void ChangeDirection(vec2 normal)
 
 void PlatformCollisionCheck()
 {
+    float halfHeight = platform.height / 2;
+    if (ball.pos.y + ball.radius >= ginfo::platformYPos - halfHeight && ball.pos.y - ball.radius <= ginfo::platformYPos + halfHeight)
+    {
+        float halfWidth = platform.width / 2;
+        if (ball.pos.x - ball.radius <= platform.xpos + halfWidth && ball.pos.x + ball.radius >= platform.xpos - halfWidth)
+        {
+            float k;
+            if (ball.pos.x >= platform.xpos)
+            {
+                k = (ball.pos.x - ball.radius - platform.xpos) / platform.width;
+            }
+            else
+            {
+                k = -(platform.xpos - (ball.pos.x + ball.radius)) / platform.width;
+            }
+            k = sin(k * PI);
 
+            ball.dir = vec2(k, k - 1);
+        }
+    }
 }
 
 
@@ -188,7 +217,17 @@ void ScreenCollisionCheck()
     if (ball.pos.y - ball.radius <= 0.0f)
     {
         ball.pos = vec2(ball.pos.x, ball.radius);
-        ChangeDirection(vec2(0.0f, 1.0f));
+        ReflectDirection(vec2(0.0f, 1.0f));
+    }
+    else if (ball.pos.x + ball.radius >= window.width)
+    {
+        ball.pos = vec2(window.width - ball.radius, ball.pos.y);
+        ReflectDirection(vec2(-1.0f, 0.0f));
+    }
+    else if (ball.pos.x - ball.radius <= 0)
+    {
+        ball.pos = vec2(ball.radius, ball.pos.y);
+        ReflectDirection(vec2(1.0f, 0.0f));
     }
 }
 
@@ -201,6 +240,7 @@ void Update()
     {
         ball.pos += ball.dir.normalized() * ball.speed;
         ScreenCollisionCheck();
+        PlatformCollisionCheck();
     }
     else
     {
