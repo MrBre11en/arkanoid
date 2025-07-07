@@ -17,6 +17,92 @@ struct vec2 {
     vec2(float X = 0.0f, float Y = 0.0f)
         : x(X), y(Y)
     {}
+
+
+    float magnitude() {
+        return sqrt(x * x + y * y);
+    }
+
+    inline vec2 normalized() {
+        float length = magnitude();
+        if (length > 0)
+        {
+            return *this / magnitude();
+        }
+        else
+        {
+            return vec2(0.0f, 1.0f);
+        }
+    }
+
+    float dot(const vec2& other) const {
+        return x * other.x + y * other.y;
+    }
+
+
+    vec2 operator+(const vec2& other) const {
+        return { x + other.x, y + other.y };
+    }
+
+    inline vec2 operator+=(const vec2& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+
+    vec2 operator-(const vec2& other) const {
+        return { x - other.x, y - other.y };
+    }
+
+    inline vec2 operator-=(const vec2& other) {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+
+    vec2 operator-() const {
+        return { -x, -y };
+    }
+
+    vec2 operator*(float num) const {
+        return { x * num, y * num };
+    }
+
+    vec2 operator*(const vec2& other) const {
+        return { x * other.x, y * other.y };
+    }
+
+    inline vec2 operator*=(float num) {
+        x *= num;
+        y *= num;
+        return *this;
+    }
+
+    inline vec2 operator*=(const vec2& other) {
+        x *= other.x;
+        y *= other.y;
+        return *this;
+    }
+
+    vec2 operator/(float num) const {
+        return { x / num, y / num };
+    }
+
+    vec2 operator/(const vec2& other) const {
+        return { x / other.x, y / other.y };
+    }
+
+    inline vec2 operator/=(float num) {
+        x /= num;
+        y /= num;
+        return *this;
+    }
+
+    inline vec2 operator/=(const vec2& other) {
+        x /= other.x;
+        y /= other.y;
+        return *this;
+    }
 };
 
 struct vec2int {
@@ -56,7 +142,8 @@ struct {
     int radius = 15;
 
     vec2 pos;
-    vec2 dir;
+    vec2 dir = vec2(0.0f, -1.0f);
+    float speed = 10;
 } ball;
 
 struct {
@@ -76,6 +163,33 @@ namespace ginfo {
 void GetMousePosition()
 {
     GetCursorPos(&MousePos);
+    if (!started && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0)
+    {
+        started = true;
+    }
+}
+
+
+void ChangeDirection(vec2 normal)
+{
+    vec2 reflected = ball.dir - (ball.dir * normal) * 2 * normal;
+    ball.dir = reflected;
+}
+
+
+void PlatformCollisionCheck()
+{
+
+}
+
+
+void ScreenCollisionCheck()
+{
+    if (ball.pos.y - ball.radius <= 0.0f)
+    {
+        ball.pos = vec2(ball.pos.x, ball.radius);
+        ChangeDirection(vec2(0.0f, 1.0f));
+    }
 }
 
 
@@ -85,7 +199,8 @@ void Update()
 
     if (started)
     {
-
+        ball.pos += ball.dir.normalized() * ball.speed;
+        ScreenCollisionCheck();
     }
     else
     {
@@ -237,6 +352,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
+   SetCursor(LoadCursor(NULL, IDC_ARROW));
+
    return TRUE;
 }
 
@@ -271,7 +388,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_PAINT:
         {
-        
         }
         break;
     case WM_DESTROY:
