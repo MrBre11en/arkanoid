@@ -304,11 +304,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Цикл основного сообщения:
     while (!GetAsyncKeyState(VK_ESCAPE))
     {
+        GetMousePosition();
+        Update();
+
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(window.hWnd, &ps);
 
-        GetMousePosition();
-        Update();
         DrawWindow(window.context);
         BitBlt(window.device_context, 0, 0, window.width, window.height, window.context, 0, 0, SRCCOPY);
 
